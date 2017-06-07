@@ -5,10 +5,15 @@ import java.io.*;
 class Participant {
     static final Random r = new Random();
     Queue<Message> messageQueue = new LinkedList<>();
-    final int messageReceiverPort = r.nextInt(65535);
-    MessageReceiver messageReceiver = new MessageReceiver(messageQueue, messageReceiverPort);
+    final int messageReceiverPort;
+    final MessageReceiver messageReceiver;
     boolean receiverStopped;
     int packetLength = 1000;
+
+    Participant(int messageReceiverPort) {
+        this.messageReceiverPort = messageReceiverPort;
+        messageReceiver = new MessageReceiver(messageQueue, messageReceiverPort);
+    }
 
     void start() {
         try {
@@ -53,7 +58,19 @@ class Participant {
     }
 
     public static void main(String args[]) {
-        Participant p = new Participant();
+        int messageReceiverPort;
+
+        try {
+            messageReceiverPort = Integer.valueOf(args[0]);
+        } catch (NumberFormatException e) {
+            System.out.println("Bad port number");
+            return;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            System.out.println("Did not provide port number");
+            return;
+        }
+
+        Participant p = new Participant(messageReceiverPort);
 
         p.start();
         p.stop();
