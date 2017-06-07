@@ -9,9 +9,11 @@ class Participant {
     final MessageReceiver messageReceiver;
     boolean receiverStopped;
     int packetLength = 1000;
+    int peerPorts[];
 
-    Participant(int messageReceiverPort) {
+    Participant(int messageReceiverPort, int peerPorts[]) {
         this.messageReceiverPort = messageReceiverPort;
+        this.peerPorts = peerPorts;
         messageReceiver = new MessageReceiver(messageQueue, messageReceiverPort);
     }
 
@@ -23,35 +25,30 @@ class Participant {
         }
     }
 
-    void sendTestMessage() {
-        try {
-            final InetAddress destAddr = InetAddress.getLoopbackAddress();
-            InetSocketAddress destSockAddr = new InetSocketAddress(destAddr, messageReceiverPort);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream(packetLength);
-            ObjectOutputStream oos =  new ObjectOutputStream(baos);
 
-            Message m = new Message();
-            m.setType("T_START");
-            m.setData("T Details");
+    void sendToPeers(Message m) {
+        for (int peerPort : peerPorts) {
+            MessageSender.send(m, peerPort);
+        }
+    }
 
-            oos.writeObject(m);
+    void sendTestMessagesToPeers() {
+        System.out.println("Sending a message to peers");
 
-            DatagramSocket s = new DatagramSocket();
-            DatagramPacket p = new DatagramPacket(baos.toByteArray(), baos.size(), destSockAddr);
-
-            System.out.println("Sending to " + destAddr + " and " +  messageReceiverPort);
-            s.send(p);
-            System.out.println("Sent to " + destAddr + " and " +  messageReceiverPort);
-        } catch (Exception e) {
-            e.printStackTrace();
+        Thread.sleep(10000);
+        Message m = new Message();
+        m.setType("T_START");
+        m.setData("T Details");
+        while(true) {
+            sendToPeers(m);
+            Thread.sleep(1000);
         }
     }
 
     void stop() {
         try {
-            System.out.println("Sending a message");
-            sendTestMessage();
-            messageReceiver.halt();
+
+//            messageReceiver.halt();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -59,18 +56,26 @@ class Participant {
 
     public static void main(String args[]) {
         int messageReceiverPort;
-
+        int peerPorts[];
         try {
+            int peerCount = args.length - 1;
+
             messageReceiverPort = Integer.valueOf(args[0]);
+            peerPorts = new int[peerCount];
+
+            for (int i = 0; i < peerCount; i++) {
+                peerPorts[i] = Integer.valueOf(args[i+1]);
+            }
+
         } catch (NumberFormatException e) {
-            System.out.println("Bad port number");
+            System.out.println("Bad port number or peer port number");
             return;
         } catch (ArrayIndexOutOfBoundsException e) {
             System.out.println("Did not provide port number");
             return;
         }
 
-        Participant p = new Participant(messageReceiverPort);
+        Participant p = new Participant(messageReceiverPort, peerPorts);
 
         p.start();
         p.stop();
