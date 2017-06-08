@@ -3,13 +3,10 @@ import java.util.*;
 import java.io.*;
 
 class AtomicCommit {
-    static final Random r = new Random();
     Queue<Message> messageQueue = new LinkedList<>();
     final int port;
-    final MessageReceiver messageReceiver;
-    boolean receiverStopped;
-    int packetLength = 1000;
     int peerPorts[];
+    final MessageReceiver messageReceiver;
 
     AtomicCommit(int port, int peerPorts[]) {
         this.port = port;
