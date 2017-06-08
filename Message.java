@@ -4,6 +4,7 @@ class Message implements Serializable {
     String type;
     String data;
     final static int maxSize = 1000;
+    int senderPort;
 
     String getType() {
         return type;
@@ -29,7 +30,15 @@ class Message implements Serializable {
         return true;
     }
 
+    int getSenderPort() {
+        return senderPort;
+    }
+
+    void setSenderPort(int senderPort) {
+        this.senderPort = senderPort;
+    }
+
     public String toString() {
-        return "type:" + type + " data:" + data;
+        return "type:" + type + " data:" + data + " senderPort:" + senderPort;
     }
 }
