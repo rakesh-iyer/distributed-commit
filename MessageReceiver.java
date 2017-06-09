@@ -1,17 +1,18 @@
 import java.net.*;
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 // abstracts the network reception part.
 // extending thread so start seems intuitive. Unfortunately need to use halt method instead of stop as stop is deprecated.
 class MessageReceiver extends Thread {
     int port;
     Thread thread;
-    Queue<Message> messageQueue;
+    BlockingQueue<Message> messageQueue;
     final InetAddress addr = InetAddress.getLoopbackAddress();
     boolean receiverStopped;
 
-    MessageReceiver(Queue<Message> messageQueue, int port) {
+    MessageReceiver(BlockingQueue<Message> messageQueue, int port) {
         this.messageQueue = messageQueue;
         this.port = port;
     }
@@ -44,7 +45,7 @@ class MessageReceiver extends Thread {
                 Message m = (Message) ois.readObject();
 
                 if (m.isValid()) {
-                    messageQueue.add(m);
+                    messageQueue.put(m);
                 }
                 System.out.println("Received a message - " + m);
             }

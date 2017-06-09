@@ -1,4 +1,5 @@
 import java.util.*;
+import java.util.concurrent.*;
 
 class ACMember implements Runnable {
     Map <String, Boolean> transactionStatusMap = new HashMap<>();
@@ -9,7 +10,7 @@ class ACMember implements Runnable {
     boolean coordinator;
     Random r = new Random();
 
-    Queue<Message> messageQueue = new LinkedList<>();
+    BlockingQueue<Message> messageQueue = new LinkedBlockingQueue<>();
     final MessageReceiver messageReceiver;
     final int port;
     int peerPorts[];
@@ -142,20 +143,24 @@ class ACMember implements Runnable {
     }
 
     void process() {
-        while (!stopThread) {
-            Message m = messageQueue.remove();
+        try {
+            while (!stopThread) {
+                Message m = messageQueue.take();
 
-            if (m.getType().equals("AC_T_START")) {
-                process_t_start(m);
-            } else if (m.getType().equals("AC_T_VOTE")) {
-                process_t_vote(m);
-            } else if (m.getType().equals("AC_T_DECISION")) {
-                process_t_decision(m);
-            } else if (m.getType().equals("AC_T_VOTE_RESPONSE")) {
-                process_t_vote_response(m);
-            } else {
-                System.out.println("Whats this message about - " + m);
+                if (m.getType().equals("AC_T_START")) {
+                    process_t_start(m);
+                } else if (m.getType().equals("AC_T_VOTE")) {
+                    process_t_vote(m);
+                } else if (m.getType().equals("AC_T_DECISION")) {
+                    process_t_decision(m);
+                } else if (m.getType().equals("AC_T_VOTE_RESPONSE")) {
+                    process_t_vote_response(m);
+                } else {
+                    System.out.println("Whats this message about - " + m);
+                }
             }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 

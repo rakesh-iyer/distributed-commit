@@ -22,16 +22,16 @@ class AtomicCommit {
             ACMember member = new ACMember(port, peerPorts, coordinator);
             Thread memberThread = new Thread(member);
 
+            memberThread.start();
             memberThread.join();
         } catch (InterruptedException e) {
             e.printStackTrace();
         } catch (NumberFormatException e) {
             System.out.println("Bad port number or peer port number");
             return;
-        } catch (ArrayIndexOutOfBoundsException e) {
+        } catch (ArrayIndexOutOfBoundsException | NegativeArraySizeException e) {
             System.out.println("Did not provide port number");
             return;
         }
-
     }
 }
