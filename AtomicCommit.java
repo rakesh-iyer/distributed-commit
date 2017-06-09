@@ -7,15 +7,24 @@ class AtomicCommit {
         int port;
         int peerPorts[];
         try {
-            int peerCount = args.length - 1;
+            int peerCount = args.length - 2;
 
             port = Integer.valueOf(args[0]);
             peerPorts = new int[peerCount];
 
-            for (int i = 0; i < peerCount; i++) {
+            int i = 0;
+            for (; i < peerCount; i++) {
                 peerPorts[i] = Integer.valueOf(args[i+1]);
             }
 
+            boolean coordinator = Boolean.valueOf(args[i+1]);
+
+            ACMember member = new ACMember(port, peerPorts, coordinator);
+            Thread memberThread = new Thread(member);
+
+            memberThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         } catch (NumberFormatException e) {
             System.out.println("Bad port number or peer port number");
             return;
