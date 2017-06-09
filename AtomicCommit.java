@@ -16,6 +16,8 @@ class AtomicCommit {
 
     class ACParticipantThread implements Runnable {
         Map <String, Boolean> transactionStatusMap = new HashMap<>();
+        List<String> commitedTransactions = new ArrayList<>();
+        List<String> abortedTransactions = new ArrayList<>();
         boolean stopThread;
         Random r = new Random();
 
@@ -52,6 +54,15 @@ class AtomicCommit {
                     acvrm.setSenderPort(port);
 
                     MessageSender.send(acvrm, coordinatorPort);
+                } else if (m.getType().equals("AC_T_DECISION")) {
+                    ACTDecisionMessage actdm = (ACTDecisionMessage) m;
+                    String tid = actdm.getTransactionId();
+
+                    if (actdm.isCommited()) {
+                        commitedTransactions.add(tid);
+                    } else {
+                        abortedTransactions.add(tid);
+                    }
                 } else {
                     System.out.println("Whats this message about - " + m);
                 }
@@ -72,6 +83,30 @@ class AtomicCommit {
         Map <String, Map<Integer, Boolean>> transactionVoteMap = new HashMap<>();
         boolean stopThread;
 
+        boolean allVotesReceived(String tid) {
+            Map <Integer, Boolean> votes = transactionVoteMap.get(tid);
+
+            for (int port : peerPorts) {
+                if (!votes.containsKey(port)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        boolean getCommitDecision(String tid) {
+            Map <Integer, Boolean> votes = transactionVoteMap.get(tid);
+
+            for (Boolean vote : votes.values()) {
+                if (!vote) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         void process() {
             while (!stopThread) {
                 Message m = messageQueue.remove();
@@ -82,6 +117,7 @@ class AtomicCommit {
 
                     transactionVoteMap.put(tid, new HashMap<>());
 
+                    //start phase 1
                     ACTVoteMessage atvm = new ACTVoteMessage();
                     atvm.setTransactionId(tid);
 
@@ -102,6 +138,16 @@ class AtomicCommit {
                     votes.put(senderPort, commit);
 
                     // if you receive all the votes or any abort go ahead and send abort decision.
+                    if (allVotesReceived(tid)) {
+                        ACTDecisionMessage actdm = new ACTDecisionMessage();
+                        boolean decision = getCommitDecision(tid);
+
+                        actdm.setTransactionId(tid);
+                        actdm.setCommited(decision);
+
+                        // start phase 2.
+                        sendToPeers(actdm);
+                    }
                 } else {
                     System.out.println("Whats this message about - " + m);
                 }
