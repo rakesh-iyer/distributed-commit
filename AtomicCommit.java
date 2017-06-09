@@ -23,6 +23,8 @@ class AtomicCommit {
             Thread memberThread = new Thread(member);
 
             memberThread.start();
+
+            member.addTransaction();
             memberThread.join();
         } catch (InterruptedException e) {
             e.printStackTrace();

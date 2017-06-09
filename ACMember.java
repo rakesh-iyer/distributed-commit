@@ -22,6 +22,19 @@ class ACMember implements Runnable {
         messageReceiver = new MessageReceiver(messageQueue, port);
     }
 
+    void addTransaction() {
+        String tid = UUID.randomUUID().toString();
+
+        ACTStartMessage actsm = new ACTStartMessage();
+        actsm.setTransactionId(tid);
+
+        try {
+            messageQueue.put(actsm);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     void sendToPeers(Message m) {
         for (int peerPort : peerPorts) {
             MessageSender.send(m, peerPort);
@@ -146,6 +159,8 @@ class ACMember implements Runnable {
         try {
             while (!stopThread) {
                 Message m = messageQueue.take();
+
+                System.out.println("Got a message " + m);
 
                 if (m.getType().equals("AC_T_START")) {
                     process_t_start(m);
