@@ -1,8 +1,8 @@
 class ACTVoteResponseMessage extends ACMessage {
     boolean commit;
 
-    String getType() {
-        return "AC_T_VOTE_RESPONSE";
+    ACTVoteResponseMessage() {
+        super.setType("AC_T_VOTE_RESPONSE");
     }
 
     boolean isCommited() {

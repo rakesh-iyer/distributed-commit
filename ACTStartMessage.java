@@ -1,8 +1,8 @@
 class ACTStartMessage extends ACMessage {
     String details;
 
-    String getType() {
-        return "AC_T_START";
+    ACTStartMessage() {
+        super.setType("AC_T_START");
     }
 
     String getDetails() {

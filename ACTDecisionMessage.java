@@ -1,8 +1,8 @@
 class ACTDecisionMessage extends ACMessage {
     boolean commit;
 
-    String getType() {
-        return "AC_T_DECISION";
+    ACTDecisionMessage() {
+        super.setType("AC_T_DECISION");
     }
 
     boolean isCommited() {

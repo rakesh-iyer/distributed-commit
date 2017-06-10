@@ -1,5 +1,5 @@
 class ACTVoteMessage extends ACMessage {
-    String getType() {
-        return "AC_T_VOTE";
+    ACTVoteMessage() {
+        super.setType("AC_T_VOTE");
     }
 }

@@ -27,6 +27,7 @@ class ACMember implements Runnable {
 
         ACTStartMessage actsm = new ACTStartMessage();
         actsm.setTransactionId(tid);
+        actsm.setSenderPort(port);
 
         try {
             messageQueue.put(actsm);
