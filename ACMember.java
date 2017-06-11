@@ -3,23 +3,32 @@ import java.util.concurrent.*;
 
 class ACMember implements Runnable {
     Map <String, Boolean> transactionStatusMap = new HashMap<>();
-    Map <String, Map <Integer, Boolean>> transactionVoteMap = new HashMap<>();
     List<String> commitedTransactions = new ArrayList<>();
     List<String> abortedTransactions = new ArrayList<>();
     boolean stopThread;
-    boolean coordinator;
+    ACCoordinator coordinator;
     Random r = new Random();
 
     BlockingQueue<Message> messageQueue = new LinkedBlockingQueue<>();
+    BlockingQueue<Message> coordinatorMessageQueue = new LinkedBlockingQueue<>();
     final MessageReceiver messageReceiver;
     final int port;
     int peerPorts[];
 
-    ACMember(int port, int peerPorts[], boolean coordinator) {
+    ACMember(int port, int peerPorts[], boolean isCoordinator) {
         this.port = port;
         this.peerPorts = peerPorts;
-        this.coordinator = coordinator;
+        if (isCoordinator) {
+            int [] memberPorts = new int [peerPorts.length + 1];
+            memberPorts[0] = port;
+            for (int i = 1; i < this.peerPorts.length; i++) {
+                memberPorts[i] = peerPorts[i-1];
+            }
+            this.coordinator = new ACCoordinator(coordinatorMessageQueue, memberPorts);
+        }
         messageReceiver = new MessageReceiver(messageQueue, port);
+        new Thread(messageReceiver).start();
+        new Thread(coordinator).start();
     }
 
     void addTransaction() {
@@ -31,6 +40,7 @@ class ACMember implements Runnable {
 
         try {
             messageQueue.put(actsm);
+            sendToPeers(actsm);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -43,31 +53,11 @@ class ACMember implements Runnable {
     }
 
     boolean isCoordinator() {
-        return coordinator;
+        return coordinator != null;
     }
 
-    boolean allVotesReceived(String tid) {
-        Map <Integer, Boolean> votes = transactionVoteMap.get(tid);
-
-        for (int port : peerPorts) {
-            if (!votes.containsKey(port)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    boolean getCommitDecision(String tid) {
-        Map <Integer, Boolean> votes = transactionVoteMap.get(tid);
-
-        for (Boolean vote : votes.values()) {
-            if (!vote) {
-                return false;
-            }
-        }
-
-        return true;
+    void forward_to_coordinator(Message m) throws InterruptedException{
+        coordinatorMessageQueue.put(m);
     }
 
     void process_t_start(Message m) {
@@ -83,16 +73,6 @@ class ACMember implements Runnable {
         }
 
         transactionStatusMap.put(tid, commit);
-
-        if (isCoordinator()) {
-            // start phase 1.
-            transactionVoteMap.put(tid, new HashMap<>());
-
-            ACTVoteMessage atvm = new ACTVoteMessage();
-            atvm.setTransactionId(tid);
-
-            sendToPeers(atvm);
-        }
     }
 
     void process_t_vote(Message m) {
@@ -124,38 +104,6 @@ class ACMember implements Runnable {
         }
     }
 
-    void process_t_vote_response(Message m) {
-        if (!isCoordinator()) {
-            System.out.println("Should not be getting this message " + m);
-        }
-
-        ACTVoteResponseMessage actvm = (ACTVoteResponseMessage) m;
-
-        String tid = actvm.getTransactionId();
-        Integer senderPort = actvm.getSenderPort();
-        Boolean commit = actvm.isCommited();
-
-        Map <Integer, Boolean> votes = transactionVoteMap.get(tid);
-
-        if (votes == null) {
-            System.out.println("Got a vote for a request never sent. " + tid);
-        }
-
-        votes.put(senderPort, commit);
-
-        // if you receive all the votes or any abort go ahead and send abort decision.
-        if (allVotesReceived(tid)) {
-            ACTDecisionMessage actdm = new ACTDecisionMessage();
-            boolean decision = getCommitDecision(tid);
-
-            actdm.setTransactionId(tid);
-            actdm.setCommited(decision);
-
-            // start phase 2.
-            sendToPeers(actdm);
-        }
-    }
-
     void process() {
         try {
             while (!stopThread) {
@@ -165,12 +113,17 @@ class ACMember implements Runnable {
 
                 if (m.getType().equals("AC_T_START")) {
                     process_t_start(m);
+                    if (isCoordinator()) {
+                        forward_to_coordinator(m);
+                    }
                 } else if (m.getType().equals("AC_T_VOTE")) {
                     process_t_vote(m);
                 } else if (m.getType().equals("AC_T_DECISION")) {
                     process_t_decision(m);
                 } else if (m.getType().equals("AC_T_VOTE_RESPONSE")) {
-                    process_t_vote_response(m);
+                    if (isCoordinator()) {
+                        forward_to_coordinator(m);
+                    }
                 } else {
                     System.out.println("Whats this message about - " + m);
                 }

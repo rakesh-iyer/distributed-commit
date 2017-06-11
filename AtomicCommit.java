@@ -6,6 +6,7 @@ class AtomicCommit {
     public static void main(String args[]) {
         int port;
         int peerPorts[];
+        boolean stopped = false;
         try {
             int peerCount = args.length - 2;
 
@@ -24,7 +25,13 @@ class AtomicCommit {
 
             memberThread.start();
 
-            member.addTransaction();
+            if (coordinator) {
+                while (!stopped) {
+                    Thread.sleep(10000);
+                    member.addTransaction();
+                }
+            }
+
             memberThread.join();
         } catch (InterruptedException e) {
             e.printStackTrace();
