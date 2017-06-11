@@ -7,6 +7,7 @@ class ACCoordinator implements Runnable {
     Map <String, Map <Integer, Boolean>> transactionVoteMap = new HashMap<>();
     int memberPorts[];
     boolean stoppedThread;
+    static final int messageDelayMillis = 20;
 
     ACCoordinator(BlockingQueue<Message> messageQueue, int memberPorts[]) {
         this.messageQueue = messageQueue;
@@ -15,6 +16,7 @@ class ACCoordinator implements Runnable {
 
     void sendToMembers(Message m) {
         for (int port : memberPorts) {
+            System.out.println(port);
             MessageSender.send(m, port);
         }
     }
@@ -43,7 +45,12 @@ class ACCoordinator implements Runnable {
         return true;
     }
 
-    void process_t_start(Message m) {
+    void wait_message_delay() throws InterruptedException {
+        Thread.sleep(messageDelayMillis);
+    }
+
+    void process_t_start(Message m) throws InterruptedException {
+        wait_message_delay();
         ACTStartMessage acm = (ACTStartMessage)m;
         String tid = acm.getTransactionId();
 
@@ -91,9 +98,9 @@ class ACCoordinator implements Runnable {
             while (!stoppedThread) {
                 Message m = messageQueue.take();
 
-                if (m.getType().equals("T_START")) {
+                if (m.getType().equals("AC_T_START")) {
                     process_t_start(m);
-                } else if (m.getType().equals("T_VOTE_RESPONSE")) {
+                } else if (m.getType().equals("AC_T_VOTE_RESPONSE")) {
                     process_t_vote_response(m);
                 } else {
                     System.out.println("Unexpected message for coordinator - " + m);

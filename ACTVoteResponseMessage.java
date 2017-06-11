@@ -12,4 +12,8 @@ class ACTVoteResponseMessage extends ACMessage {
     void setCommited(boolean commit) {
         this.commit = commit;
     }
+
+    public String toString() {
+        return super.toString() + " commit " + commit;
+    }
 }

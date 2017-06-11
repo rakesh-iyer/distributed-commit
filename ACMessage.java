@@ -8,4 +8,8 @@ class ACMessage extends Message {
     void setTransactionId(String transactionId) {
         this.transactionId = transactionId;
     }
+
+    public String toString() {
+        return super.toString() + " transactionId " + transactionId;
+    }
 }

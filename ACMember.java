@@ -21,7 +21,7 @@ class ACMember implements Runnable {
         if (isCoordinator) {
             int [] memberPorts = new int [peerPorts.length + 1];
             memberPorts[0] = port;
-            for (int i = 1; i < this.peerPorts.length; i++) {
+            for (int i = 1; i < memberPorts.length; i++) {
                 memberPorts[i] = peerPorts[i-1];
             }
             this.coordinator = new ACCoordinator(coordinatorMessageQueue, memberPorts);
@@ -88,6 +88,7 @@ class ACMember implements Runnable {
         ACTVoteResponseMessage acvrm = new ACTVoteResponseMessage();
 
         acvrm.setCommited(transactionStatusMap.get(tid));
+        acvrm.setTransactionId(tid);
         acvrm.setSenderPort(port);
 
         MessageSender.send(acvrm, coordinatorPort);
