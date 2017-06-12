@@ -2,7 +2,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 class ACMember implements Runnable {
-    Map <String, Boolean> transactionStatusMap = new HashMap<>();
+    Map <String, TransactionStatus> transactionStatusMap = new HashMap<>();
     List<String> commitedTransactions = new ArrayList<>();
     List<String> abortedTransactions = new ArrayList<>();
     boolean stopThread;
@@ -14,6 +14,49 @@ class ACMember implements Runnable {
     final MessageReceiver messageReceiver;
     final int port;
     int peerPorts[];
+
+    static class TransactionStatus {
+        boolean commited;
+        boolean started;
+        boolean voting;
+        int coordinatorPort;
+
+        boolean isCommited() {
+            return commited;
+        }
+
+        boolean isStarted() {
+            return started;
+        }
+
+        boolean isVoting() {
+            return voting;
+        }
+
+        int getCoordinatorPort() {
+            return coordinatorPort;
+        }
+
+        void setCommited(boolean commited) {
+            this.commited = commited;
+        }
+
+        void setVoting(boolean voting) {
+            this.voting = voting;
+        }
+
+        void setStarted(boolean started) {
+            this.started = started;
+        }
+
+        void setCoordinatorPort(int coordinatorPort) {
+            this.coordinatorPort = coordinatorPort;
+        }
+
+        public String toString() {
+            return "commited " + commited + " started " + started + " voting " + voting + " coordinatorPort " + coordinatorPort;
+        }
+    }
 
     ACMember(int port, int peerPorts[], boolean isCoordinator) {
         this.port = port;
@@ -67,12 +110,18 @@ class ACMember implements Runnable {
         // Just get a pseudo-random commit/abort status.
         boolean commit = getRandomCommitStatus();
 
-        if (transactionStatusMap.get(tid) != null) {
-            System.out.println("duplicate message for tid - " + tid);
-            return;
+        TransactionStatus status = transactionStatusMap.get(tid);
+        if (status == null) {
+            status = new TransactionStatus();
+            transactionStatusMap.put(tid, status);
         }
 
-        transactionStatusMap.put(tid, commit);
+        status.setCommited(commit);
+        status.setStarted(true);
+
+        if (status.isVoting()) {
+            sendVoteResponse(tid);
+        }
     }
 
     void process_t_vote(Message m) {
@@ -80,18 +129,28 @@ class ACMember implements Runnable {
         int coordinatorPort = acvm.getSenderPort();
         String tid = acvm.getTransactionId();
 
-        if (transactionStatusMap.get(tid) == null) {
-            // we got a vote message before start message, do we wait for vote to arrive?
-            return;
+        TransactionStatus status = transactionStatusMap.get(tid);
+        if (status == null) {
+            status = new TransactionStatus();
+            transactionStatusMap.put(tid, status);
         }
+        status.setVoting(true);
+        status.setCoordinatorPort(coordinatorPort);
 
+        if (status.isStarted()) {
+            sendVoteResponse(tid);
+        }
+    }
+
+    void sendVoteResponse(String tid) {
         ACTVoteResponseMessage acvrm = new ACTVoteResponseMessage();
+        TransactionStatus status = transactionStatusMap.get(tid);
 
-        acvrm.setCommited(transactionStatusMap.get(tid));
+        acvrm.setCommited(status.isCommited());
         acvrm.setTransactionId(tid);
         acvrm.setSenderPort(port);
 
-        MessageSender.send(acvrm, coordinatorPort);
+        MessageSender.send(acvrm, status.getCoordinatorPort());
     }
 
     void process_t_decision(Message m) {

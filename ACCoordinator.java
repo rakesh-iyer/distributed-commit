@@ -50,7 +50,6 @@ class ACCoordinator implements Runnable {
     }
 
     void process_t_start(Message m) throws InterruptedException {
-        wait_message_delay();
         ACTStartMessage acm = (ACTStartMessage)m;
         String tid = acm.getTransactionId();
 
