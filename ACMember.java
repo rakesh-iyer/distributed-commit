@@ -2,7 +2,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 class ACMember implements Runnable {
-    Map <String, TransactionStatus> transactionStatusMap = new HashMap<>();
+    Map<String, Transaction> transactionMap = new HashMap<>();
     List<String> commitedTransactions = new ArrayList<>();
     List<String> abortedTransactions = new ArrayList<>();
     boolean stopThread;
@@ -20,6 +20,14 @@ class ACMember implements Runnable {
 
         messageReceiver = new MessageReceiver(messageQueue, port);
         new Thread(messageReceiver).start();
+    }
+
+    void commitTransaction(ACMemberTransaction t) {
+        commitedTransactions.add(t);
+    }
+
+    void abortTransaction(ACMemberTransaction t) {
+        abortedTransactions.add(t);
     }
 
     void addTransaction() {
@@ -53,17 +61,16 @@ class ACMember implements Runnable {
             while (!stopThread) {
                 ACMessage acm = (ACMessage)messageQueue.take();
                 String tid = acm.getTransactionId();
-                ACMemberTransaction t;
 
                 System.out.println("Got a message " + acm);
 
                 if (acm.getType().equals("AC_T_START")) {
-                    t =  new ACMemberTransaction(this, tid);
+                    ACMemberTransaction t =  new ACMemberTransaction(this, tid);
+                    transactionMap.add(t);
                     new Thread(t).start();
-                } else {
-                    t = transactionMap.get(tid);
                 }
 
+                ACMemberTransaction t = transactionMap.get(tid);
                 t.getMessageQueue().put(acm);
             }
         } catch (InterruptedException e) {

@@ -2,16 +2,24 @@ import java.util.*;
 import java.util.concurrent.*;
 
 class ACCoordinator implements Runnable {
-    // this is a local producer/consumer.
-    BlockingQueue<Message> messageQueue;
+    Map<String, Transaction> transactionMap = new HashMap<>();
     Map <String, Map <Integer, Boolean>> transactionVoteMap = new HashMap<>();
-    int memberPorts[];
-    boolean stoppedThread;
-    static final int messageDelayMillis = 20;
 
-    ACCoordinator(BlockingQueue<Message> messageQueue, int memberPorts[]) {
-        this.messageQueue = messageQueue;
+    List<String> commitedTransactions = new ArrayList<>();
+    List<String> abortedTransactions = new ArrayList<>();
+    boolean stopThread;
+
+    BlockingQueue<Message> messageQueue = new LinkedBlockingQueue<>();
+    final MessageReceiver messageReceiver;
+    final int port;
+    int memberPorts[];
+
+    ACCoordinator(int port, int[] memberPorts) {
+        this.port = port;
         this.memberPorts = memberPorts;
+
+        messageReceiver = new MessageReceiver(messageQueue, port);
+        new Thread(messageReceiver).start();
     }
 
     void sendToMembers(Message m) {
@@ -21,90 +29,23 @@ class ACCoordinator implements Runnable {
         }
     }
 
-    boolean allVotesReceived(String tid) {
-        Map <Integer, Boolean> votes = transactionVoteMap.get(tid);
-
-        for (int port : memberPorts) {
-            if (!votes.containsKey(port)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    boolean getCommitDecision(String tid) {
-        Map <Integer, Boolean> votes = transactionVoteMap.get(tid);
-
-        for (Boolean vote : votes.values()) {
-            if (!vote) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    void wait_message_delay() throws InterruptedException {
-        Thread.sleep(messageDelayMillis);
-    }
-
-    void process_t_start(Message m) throws InterruptedException {
-        ACTStartMessage acm = (ACTStartMessage)m;
-        String tid = acm.getTransactionId();
-
-        // start phase 1.
-        transactionVoteMap.put(tid, new HashMap<>());
-
-        ACTVoteMessage atvm = new ACTVoteMessage();
-        atvm.setTransactionId(tid);
-        atvm.setSenderPort(memberPorts[0]);
-
-        sendToMembers(atvm);
-    }
-
-    void process_t_vote_response(Message m) {
-        ACTVoteResponseMessage actvm = (ACTVoteResponseMessage) m;
-
-        String tid = actvm.getTransactionId();
-        Integer senderPort = actvm.getSenderPort();
-        Boolean commit = actvm.isCommited();
-
-        Map <Integer, Boolean> votes = transactionVoteMap.get(tid);
-
-        if (votes == null) {
-            System.out.println("Got a vote for a request never sent. " + tid);
-        }
-
-        votes.put(senderPort, commit);
-
-        // if you receive all the votes or any abort go ahead and send abort decision.
-        if (allVotesReceived(tid)) {
-            ACTDecisionMessage actdm = new ACTDecisionMessage();
-            boolean decision = getCommitDecision(tid);
-
-            actdm.setTransactionId(tid);
-            actdm.setCommited(decision);
-            actdm.setSenderPort(memberPorts[0]);
-
-            // start phase 2.
-            sendToMembers(actdm);
-        }
-    }
-
     void process() {
         try {
-            while (!stoppedThread) {
-                Message m = messageQueue.take();
+            while (!stopThread) {
+                ACMessage acm = (ACMessage)messageQueue.take();
+                String tid = acm.getTransactionId();
 
-                if (m.getType().equals("AC_T_START")) {
-                    process_t_start(m);
-                } else if (m.getType().equals("AC_T_VOTE_RESPONSE")) {
-                    process_t_vote_response(m);
-                } else {
-                    System.out.println("Unexpected message for coordinator - " + m);
+                System.out.println("Got a message " + acm);
+
+                if (acm.getType().equals("AC_T_START")) {
+                    ACCoordinatorTransaction t =  new ACCoordinatorTransaction(this, tid);
+                    transactionMap.add(t);
+                    new Thread(t).start();
                 }
-            }            
+
+                ACCoordinatorTransaction t = transactionMap.get(tid);
+                t.getMessageQueue().put(acm);
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
