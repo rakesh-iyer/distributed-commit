@@ -28,6 +28,6 @@ class ACTransactionStatus {
     }
 
     public String toString() {
-        return "commited " + commited + " started " + started + " voting " + voting + " coordinatorPort " + coordinatorPort;
+        return "commited " + commited + " started " + started + " voting " + voting;
     }
 }

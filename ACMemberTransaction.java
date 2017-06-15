@@ -1,15 +1,24 @@
+import java.util.*;
+import java.util.concurrent.*;
+
 class ACMemberTransaction implements Runnable {
     ACMember member;
-    LinkedQueue<Message> messageQueue;
+    BlockingQueue<Message> messageQueue;
     String tid;
     ACTransactionStatus status;
+    boolean stopThread;
+    Random r = new Random();
 
     ACMemberTransaction(ACMember member, String tid) {
         this.member = member;
         this.tid = tid;
 
-        messageQueue = new BlockingQueue<>();
-        status = new TransactionStatus();
+        messageQueue = new LinkedBlockingQueue<>();
+        status = new ACTransactionStatus();
+    }
+
+    BlockingQueue<Message> getMessageQueue() {
+        return messageQueue;
     }
 
     void process_t_start(ACTStartMessage acsm) {
@@ -28,7 +37,6 @@ class ACMemberTransaction implements Runnable {
         int coordinatorPort = acvm.getSenderPort();
 
         status.setVoting(true);
-        status.setCoordinatorPort(coordinatorPort);
 
         if (status.isStarted()) {
             sendVoteResponse(tid);
@@ -37,13 +45,17 @@ class ACMemberTransaction implements Runnable {
 
     void sendVoteResponse(String tid) {
         ACTVoteResponseMessage acvrm = new ACTVoteResponseMessage();
-        TransactionStatus status = transactionStatusMap.get(tid);
 
         acvrm.setCommited(status.isCommited());
         acvrm.setTransactionId(tid);
-        acvrm.setSenderPort(port);
+        acvrm.setSenderPort(member.getPort());
 
         member.sendToCoordinator(acvrm);
+    }
+
+    // pseudo probability of 0.1 returning false.
+    boolean getRandomCommitStatus() {
+        return r.nextInt(11) < 10;
     }
 
     void process_t_decision(ACTDecisionMessage actdm) {
@@ -62,16 +74,14 @@ class ACMemberTransaction implements Runnable {
                 System.out.println("Got a message " + acm);
 
                 if (acm.getType().equals("AC_T_START")) {
-                    process_t_start(acm);
+                    process_t_start((ACTStartMessage)acm);
                 } else if (acm.getType().equals("AC_T_VOTE")) {
-                    process_t_vote(acm);
+                    process_t_vote((ACTVoteMessage)acm);
                 } else if (acm.getType().equals("AC_T_DECISION")) {
-                    process_t_decision(acm);
+                    process_t_decision((ACTDecisionMessage)acm);
                 } else {
                     System.out.println("Unexpected message");
                 }
-
-                t.getMessageQueue().put(acm);
             }
         } catch (InterruptedException e) {
             e.printStackTrace();

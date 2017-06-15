@@ -2,7 +2,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 class ACMember implements Runnable {
-    Map<String, Transaction> transactionMap = new HashMap<>();
+    Map<String, ACMemberTransaction> transactionMap = new HashMap<>();
     List<String> commitedTransactions = new ArrayList<>();
     List<String> abortedTransactions = new ArrayList<>();
     boolean stopThread;
@@ -11,23 +11,28 @@ class ACMember implements Runnable {
     BlockingQueue<Message> messageQueue = new LinkedBlockingQueue<>();
     final MessageReceiver messageReceiver;
     final int port;
+    int coordinatorPort;
     int peerPorts[];
 
     ACMember(int port, int coordinatorPort, int[] peerPorts) {
         this.port = port;
-        this.coordinatorPort = pcoordinatorPort;
+        this.coordinatorPort = coordinatorPort;
         this.peerPorts = peerPorts;
 
         messageReceiver = new MessageReceiver(messageQueue, port);
         new Thread(messageReceiver).start();
     }
 
-    void commitTransaction(ACMemberTransaction t) {
-        commitedTransactions.add(t);
+    int getPort() {
+        return port;
     }
 
-    void abortTransaction(ACMemberTransaction t) {
-        abortedTransactions.add(t);
+    void commitTransaction(String tid) {
+        commitedTransactions.add(tid);
+    }
+
+    void abortTransaction(String tid) {
+        abortedTransactions.add(tid);
     }
 
     void addTransaction() {
@@ -66,7 +71,7 @@ class ACMember implements Runnable {
 
                 if (acm.getType().equals("AC_T_START")) {
                     ACMemberTransaction t =  new ACMemberTransaction(this, tid);
-                    transactionMap.add(t);
+                    transactionMap.put(tid, t);
                     new Thread(t).start();
                 }
 
@@ -76,11 +81,6 @@ class ACMember implements Runnable {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-    }
-
-    // pseudo probability of 0.1 returning false.
-    boolean getRandomCommitStatus() {
-        return r.nextInt(11) < 10;
     }
 
     public void run() {

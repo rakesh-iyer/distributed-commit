@@ -2,7 +2,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 class ACCoordinator implements Runnable {
-    Map<String, Transaction> transactionMap = new HashMap<>();
+    Map<String, ACCoordinatorTransaction> transactionMap = new HashMap<>();
     Map <String, Map <Integer, Boolean>> transactionVoteMap = new HashMap<>();
 
     List<String> commitedTransactions = new ArrayList<>();
@@ -22,6 +22,14 @@ class ACCoordinator implements Runnable {
         new Thread(messageReceiver).start();
     }
 
+    int getPort() {
+        return port;
+    }
+
+    int[] getMemberPorts() {
+        return memberPorts;
+    }
+
     void sendToMembers(Message m) {
         for (int port : memberPorts) {
             System.out.println(port);
@@ -39,7 +47,7 @@ class ACCoordinator implements Runnable {
 
                 if (acm.getType().equals("AC_T_START")) {
                     ACCoordinatorTransaction t =  new ACCoordinatorTransaction(this, tid);
-                    transactionMap.add(t);
+                    transactionMap.put(tid, t);
                     new Thread(t).start();
                 }
 

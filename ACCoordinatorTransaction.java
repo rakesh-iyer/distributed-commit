@@ -1,29 +1,37 @@
-class ACCoordinatorTransaction {
+import java.util.*;
+import java.util.concurrent.*;
+
+class ACCoordinatorTransaction implements Runnable {
     ACCoordinator coordinator;
-    LinkedQueue<Message> messageQueue;
+    BlockingQueue<Message> messageQueue;
     String tid;
     ACTransactionStatus status;
     Map<Integer, Boolean> voteMap = new HashMap<>();
+    boolean stopThread;
 
-    ACCoordinatorTransaction(ACMember member, String tid) {
-        this.member = member;
+    ACCoordinatorTransaction(ACCoordinator coordinator, String tid) {
+        this.coordinator = coordinator;
         this.tid = tid;
 
-        messageQueue = new BlockingQueue<>();
-        status = new TransactionStatus();
+        messageQueue = new LinkedBlockingQueue<>();
+        status = new ACTransactionStatus();
     }
 
-    void process_t_start(ACTStartMessage m) throws InterruptedException {
+    BlockingQueue<Message> getMessageQueue() {
+        return messageQueue;
+    }
+
+    void process_t_start(ACTStartMessage acsm) throws InterruptedException {
         // start phase 1.
         ACTVoteMessage atvm = new ACTVoteMessage();
         atvm.setTransactionId(tid);
-        atvm.setSenderPort(memberPorts[0]);
+        atvm.setSenderPort(coordinator.getPort());
 
-        sendToMembers(atvm);
+        coordinator.sendToMembers(atvm);
     }
 
     boolean allVotesReceived(String tid) {
-        for (int port : memberPorts) {
+        for (int port : coordinator.getMemberPorts()) {
             if (!voteMap.containsKey(port)) {
                 return false;
             }
@@ -42,7 +50,7 @@ class ACCoordinatorTransaction {
         return true;
     }
 
-    void process_t_vote_response(ACTVoteResponseMessage m) {
+    void process_t_vote_response(ACTVoteResponseMessage actvm) {
         Integer senderPort = actvm.getSenderPort();
         Boolean commit = actvm.isCommited();
 
@@ -55,22 +63,22 @@ class ACCoordinatorTransaction {
 
             actdm.setTransactionId(tid);
             actdm.setCommited(decision);
-            actdm.setSenderPort(memberPorts[0]);
+            actdm.setSenderPort(coordinator.getPort());
 
             // start phase 2.
-            sendToMembers(actdm);
+            coordinator.sendToMembers(actdm);
         }
     }
 
     void process() {
         try {
-            while (!stoppedThread) {
+            while (!stopThread) {
                 Message m = messageQueue.take();
 
                 if (m.getType().equals("AC_T_START")) {
-                    process_t_start(m);
+                    process_t_start((ACTStartMessage)m);
                 } else if (m.getType().equals("AC_T_VOTE_RESPONSE")) {
-                    process_t_vote_response(m);
+                    process_t_vote_response((ACTVoteResponseMessage)m);
                 } else {
                     System.out.println("Unexpected message for coordinator - " + m);
                 }
@@ -78,5 +86,9 @@ class ACCoordinatorTransaction {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    public void run() {
+        process();
     }
 }

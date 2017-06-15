@@ -20,7 +20,7 @@ class AtomicCommit {
 
             boolean coordinator = Boolean.valueOf(args[i+1]);
 
-            ACMember member = new ACMember(port, peerPorts, coordinator);
+/*            ACMember member = new ACMember(port, peerPorts, coordinator);
             Thread memberThread = new Thread(member);
 
             memberThread.start();
@@ -34,7 +34,7 @@ class AtomicCommit {
 
             memberThread.join();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            e.printStackTrace();*/
         } catch (NumberFormatException e) {
             System.out.println("Bad port number or peer port number");
             return;
