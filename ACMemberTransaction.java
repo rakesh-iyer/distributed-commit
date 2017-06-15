@@ -70,7 +70,7 @@ class ACMemberTransaction implements Runnable {
                 } else {
                     System.out.println("Unexpected message");
                 }
-                
+
                 t.getMessageQueue().put(acm);
             }
         } catch (InterruptedException e) {
