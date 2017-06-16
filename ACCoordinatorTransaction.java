@@ -7,6 +7,7 @@ class ACCoordinatorTransaction implements Runnable {
     String tid;
     ACTransactionStatus status;
     Map<Integer, Boolean> voteMap = new HashMap<>();
+    long messageDelay = 100;
     boolean stopThread;
 
     ACCoordinatorTransaction(ACCoordinator coordinator, String tid) {
@@ -30,7 +31,7 @@ class ACCoordinatorTransaction implements Runnable {
         coordinator.sendToMembers(atvm);
     }
 
-    boolean allVotesReceived(String tid) {
+    boolean allVotesReceived() {
         for (int port : coordinator.getMemberPorts()) {
             if (!voteMap.containsKey(port)) {
                 return false;
@@ -40,7 +41,7 @@ class ACCoordinatorTransaction implements Runnable {
         return true;
     }
 
-    boolean getCommitDecision(String tid) {
+    boolean getCommitDecision() {
         for (Boolean vote : voteMap.values()) {
             if (!vote) {
                 return false;
@@ -57,9 +58,9 @@ class ACCoordinatorTransaction implements Runnable {
         voteMap.put(senderPort, commit);
 
         // if you receive all the votes or any abort go ahead and send abort decision.
-        if (allVotesReceived(tid)) {
+        if (allVotesReceived()) {
             ACTDecisionMessage actdm = new ACTDecisionMessage();
-            boolean decision = getCommitDecision(tid);
+            boolean decision = getCommitDecision();
 
             actdm.setTransactionId(tid);
             actdm.setCommited(decision);
@@ -72,17 +73,20 @@ class ACCoordinatorTransaction implements Runnable {
 
     void process() {
         try {
-            while (!stopThread) {
-                Message m = messageQueue.take();
+            Message m;
 
-                if (m.getType().equals("AC_T_START")) {
-                    process_t_start((ACTStartMessage)m);
-                } else if (m.getType().equals("AC_T_VOTE_RESPONSE")) {
-                    process_t_vote_response((ACTVoteResponseMessage)m);
-                } else {
-                    System.out.println("Unexpected message for coordinator - " + m);
-                }
+            m = TimedMessage.get_message_type(messageQueue, "AC_T_START", messageDelay);
+            process_t_start((ACTStartMessage)m);
+
+            long startMillis = System.currentTimeMillis();
+            while (!allVotesReceived()) {
+                long sleepTime = messageDelay - (System.currentTimeMillis() - startMillis);
+
+                m = TimedMessage.get_message_type(messageQueue, "AC_T_VOTE_RESPONSE", sleepTime);
+                process_t_vote_response((ACTVoteResponseMessage)m);
             }
+        } catch (TimeoutException e) {
+            e.printStackTrace();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

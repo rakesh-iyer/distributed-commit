@@ -7,6 +7,7 @@ class ACMemberTransaction implements Runnable {
     String tid;
     ACTransactionStatus status;
     boolean stopThread;
+    long messageDelay = 100;
     Random r = new Random();
 
     ACMemberTransaction(ACMember member, String tid) {
@@ -68,21 +69,18 @@ class ACMemberTransaction implements Runnable {
 
     void process() {
         try {
-            while (!stopThread) {
-                ACMessage acm = (ACMessage)messageQueue.take();
+            Message m;
 
-                System.out.println("Got a message " + acm);
+            m = TimedMessage.get_message_type(messageQueue, "AC_T_START", messageDelay);
+            process_t_start((ACTStartMessage)m);
 
-                if (acm.getType().equals("AC_T_START")) {
-                    process_t_start((ACTStartMessage)acm);
-                } else if (acm.getType().equals("AC_T_VOTE")) {
-                    process_t_vote((ACTVoteMessage)acm);
-                } else if (acm.getType().equals("AC_T_DECISION")) {
-                    process_t_decision((ACTDecisionMessage)acm);
-                } else {
-                    System.out.println("Unexpected message");
-                }
-            }
+            m = TimedMessage.get_message_type(messageQueue, "AC_T_VOTE", messageDelay);
+            process_t_vote((ACTVoteMessage)m);
+
+            m = TimedMessage.get_message_type(messageQueue, "AC_T_DECISION", messageDelay);
+            process_t_decision((ACTDecisionMessage)m);
+        } catch (TimeoutException e) {
+            e.printStackTrace();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
