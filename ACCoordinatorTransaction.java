@@ -51,6 +51,16 @@ class ACCoordinatorTransaction implements Runnable {
         return true;
     }
 
+    void sendCommitDecision(boolean decision) {
+        ACTDecisionMessage actdm = new ACTDecisionMessage();
+
+        actdm.setTransactionId(tid);
+        actdm.setCommited(decision);
+        actdm.setSenderPort(coordinator.getPort());
+
+        coordinator.sendToMembers(actdm);
+    }
+
     void process_t_vote_response(ACTVoteResponseMessage actvm) {
         Integer senderPort = actvm.getSenderPort();
         Boolean commit = actvm.isCommited();
@@ -59,15 +69,8 @@ class ACCoordinatorTransaction implements Runnable {
 
         // if you receive all the votes or any abort go ahead and send abort decision.
         if (allVotesReceived()) {
-            ACTDecisionMessage actdm = new ACTDecisionMessage();
-            boolean decision = getCommitDecision();
-
-            actdm.setTransactionId(tid);
-            actdm.setCommited(decision);
-            actdm.setSenderPort(coordinator.getPort());
-
             // start phase 2.
-            coordinator.sendToMembers(actdm);
+            sendCommitDecision(getCommitDecision());
         }
     }
 
@@ -86,7 +89,7 @@ class ACCoordinatorTransaction implements Runnable {
                 process_t_vote_response((ACTVoteResponseMessage)m);
             }
         } catch (TimeoutException e) {
-            e.printStackTrace();
+            sendCommitDecision(false);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

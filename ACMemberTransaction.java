@@ -80,7 +80,8 @@ class ACMemberTransaction implements Runnable {
             m = TimedMessage.get_message_type(messageQueue, "AC_T_DECISION", messageDelay);
             process_t_decision((ACTDecisionMessage)m);
         } catch (TimeoutException e) {
-            e.printStackTrace();
+            // abort transaction.
+            member.abortTransaction(tid);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
