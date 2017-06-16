@@ -4,37 +4,43 @@ import java.io.*;
 
 class AtomicCommit {
     public static void main(String args[]) {
-        int port;
-        int peerPorts[];
+        int ports[];
         boolean stopped = false;
         try {
-            int peerCount = args.length - 2;
+            int portCount = args.length - 1;
 
-            port = Integer.valueOf(args[0]);
-            peerPorts = new int[peerCount];
+            ports = new int[portCount];
 
-            int i = 0;
-            for (; i < peerCount; i++) {
-                peerPorts[i] = Integer.valueOf(args[i+1]);
+            for (int i = 0; i < portCount; i++) {
+                ports[i] = Integer.valueOf(args[i]);
             }
 
-            boolean coordinator = Boolean.valueOf(args[i+1]);
+            boolean isCoordinator = Boolean.valueOf(args[portCount]);
 
-/*            ACMember member = new ACMember(port, peerPorts, coordinator);
-            Thread memberThread = new Thread(member);
+            if (isCoordinator) {
+                int [] memberPorts = Arrays.copyOfRange(ports, 1, portCount);
 
-            memberThread.start();
+                ACCoordinator coordinator = new ACCoordinator(ports[0], memberPorts);
 
-            if (coordinator) {
+                Thread coordinatorThread = new Thread(coordinator);
+                coordinatorThread.start();
+                coordinatorThread.join();
+            } else {
+                int [] peerPorts = Arrays.copyOfRange(ports, 2, portCount);
+
+                ACMember member = new ACMember(ports[1], ports[0], peerPorts);
+
+                Thread memberThread = new Thread(member);
+                memberThread.start();
+
                 while (!stopped) {
                     Thread.sleep(10000);
                     member.addTransaction();
                 }
+                memberThread.join();
             }
-
-            memberThread.join();
         } catch (InterruptedException e) {
-            e.printStackTrace();*/
+            e.printStackTrace();
         } catch (NumberFormatException e) {
             System.out.println("Bad port number or peer port number");
             return;
