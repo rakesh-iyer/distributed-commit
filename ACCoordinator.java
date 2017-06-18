@@ -12,11 +12,13 @@ class ACCoordinator implements Runnable {
     BlockingQueue<Message> messageQueue = new LinkedBlockingQueue<>();
     final MessageReceiver messageReceiver;
     final int port;
+    boolean doRecovery;
     int memberPorts[];
 
-    ACCoordinator(int port, int[] memberPorts) {
+    ACCoordinator(int port, int[] memberPorts, boolean doRecovery) {
         this.port = port;
         this.memberPorts = memberPorts;
+        this.doRecovery = doRecovery;
 
         messageReceiver = new MessageReceiver(messageQueue, port);
         new Thread(messageReceiver).start();
@@ -60,6 +62,13 @@ class ACCoordinator implements Runnable {
     }
 
     public void run() {
+        if (doRecovery) {
+            recover();
+        }
+
         process();
+    }
+
+    public void recover() {
     }
 }

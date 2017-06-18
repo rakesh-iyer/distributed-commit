@@ -20,7 +20,7 @@ class AtomicCommit {
             if (isCoordinator) {
                 int [] memberPorts = Arrays.copyOfRange(ports, 1, portCount);
 
-                ACCoordinator coordinator = new ACCoordinator(ports[0], memberPorts);
+                ACCoordinator coordinator = new ACCoordinator(ports[0], memberPorts, needsRecovery());
 
                 Thread coordinatorThread = new Thread(coordinator);
                 coordinatorThread.start();
@@ -28,7 +28,7 @@ class AtomicCommit {
             } else {
                 int [] peerPorts = Arrays.copyOfRange(ports, 2, portCount);
 
-                ACMember member = new ACMember(ports[1], ports[0], peerPorts);
+                ACMember member = new ACMember(ports[1], ports[0], peerPorts, needsRecovery());
 
                 Thread memberThread = new Thread(member);
                 memberThread.start();
@@ -48,5 +48,9 @@ class AtomicCommit {
             System.out.println("Did not provide port number");
             return;
         }
+    }
+
+    static boolean needsRecovery() {
+        return false;
     }
 }

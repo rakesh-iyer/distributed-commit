@@ -22,7 +22,7 @@ class ACMemberTransaction implements Runnable {
         return messageQueue;
     }
 
-    void process_t_start(ACTStartMessage acsm) {
+    boolean process_t_start(ACTStartMessage acsm) {
         // Just get a pseudo-random commit/abort status.
         boolean commit = getRandomCommitStatus();
 
@@ -32,6 +32,8 @@ class ACMemberTransaction implements Runnable {
         if (status.isVoting()) {
             sendVoteResponse(tid);
         }
+
+        return commit;
     }
 
     void process_t_vote(ACTVoteMessage acvm) {
@@ -59,31 +61,42 @@ class ACMemberTransaction implements Runnable {
         return r.nextInt(11) < 10;
     }
 
-    void process_t_decision(ACTDecisionMessage actdm) {
-        if (actdm.isCommited()) {
+    boolean process_t_decision(ACTDecisionMessage actdm) {
+        boolean commit = actdm.isCommited();
+        if (commit) {
             member.commitTransaction(tid);
         } else {
             member.abortTransaction(tid);
         }
+
+        return commit;
     }
 
     void process() {
+        boolean commit = false;
         try {
             Message m;
 
             m = TimedMessage.get_message_type(messageQueue, "AC_T_START", messageDelay);
-            process_t_start((ACTStartMessage)m);
+            commit = process_t_start((ACTStartMessage)m);
 
             m = TimedMessage.get_message_type(messageQueue, "AC_T_VOTE", messageDelay);
             process_t_vote((ACTVoteMessage)m);
 
-            m = TimedMessage.get_message_type(messageQueue, "AC_T_DECISION", messageDelay);
-            process_t_decision((ACTDecisionMessage)m);
+            if (commit) {
+                m = TimedMessage.get_message_type(messageQueue, "AC_T_DECISION", messageDelay);
+                commit = process_t_decision((ACTDecisionMessage)m);
+            }
         } catch (TimeoutException e) {
             // abort transaction.
             member.abortTransaction(tid);
         } catch (InterruptedException e) {
             e.printStackTrace();
+        }
+
+        if (!commit)  {
+            member.abortTransaction(tid);
+            return;
         }
     }
 

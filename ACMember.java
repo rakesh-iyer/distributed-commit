@@ -13,11 +13,13 @@ class ACMember implements Runnable {
     final int port;
     int coordinatorPort;
     int peerPorts[];
+    boolean doRecovery;
 
-    ACMember(int port, int coordinatorPort, int[] peerPorts) {
+    ACMember(int port, int coordinatorPort, int[] peerPorts, boolean doRecovery) {
         this.port = port;
         this.coordinatorPort = coordinatorPort;
         this.peerPorts = peerPorts;
+        this.doRecovery = doRecovery;
 
         messageReceiver = new MessageReceiver(messageQueue, port);
         new Thread(messageReceiver).start();
@@ -84,6 +86,13 @@ class ACMember implements Runnable {
     }
 
     public void run() {
+        if (doRecovery) {
+            recover();
+        }
+
         process();
+    }
+
+    public void recover() {
     }
 }
