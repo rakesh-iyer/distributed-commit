@@ -33,7 +33,9 @@ class ACMemberTransaction implements Runnable {
             sendVoteResponse(tid);
         }
 
-        member.getLogImpl().writeRecord(new LogRecord(tid));
+        if (commit) {
+            member.getLogImpl().writeRecord(new LogRecord(tid));
+        }
 
         return commit;
     }

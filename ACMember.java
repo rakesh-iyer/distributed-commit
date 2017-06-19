@@ -99,5 +99,26 @@ class ACMember implements Runnable {
     }
 
     public void recover() {
+        List<LogRecord> list = logImpl.readAllRecords();
+        Set<LogRecord> transactions = new HashSet<>();
+
+        /*
+         * These are transactions that have been locally decided to commit but need consensus of commit/abort.
+         */
+
+        for (LogRecord r : list) {
+            String tid = r.getTransactionId();
+
+            if (r instanceof StatusRecord) {
+                transactions.remove(r);
+            } else {
+                transactions.add(r);
+            }
+        }
+
+        System.out.println("These are the transactions that need aborting -");
+        for (LogRecord r : transactions) {
+            System.out.println(r.getTransactionId());
+        }
     }
 }
