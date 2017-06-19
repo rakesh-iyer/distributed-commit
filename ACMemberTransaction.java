@@ -33,6 +33,8 @@ class ACMemberTransaction implements Runnable {
             sendVoteResponse(tid);
         }
 
+        member.getLogImpl().writeRecord(new LogRecord(tid));
+
         return commit;
     }
 
@@ -61,8 +63,16 @@ class ACMemberTransaction implements Runnable {
         return r.nextInt(11) < 10;
     }
 
+    void writeStatusRecord(boolean commit) {
+        StatusRecord record = new StatusRecord(tid);
+
+        record.setCommited(commit);
+        member.getLogImpl().writeRecord(record);
+    }
+
     boolean process_t_decision(ACTDecisionMessage actdm) {
         boolean commit = actdm.isCommited();
+        writeStatusRecord(commit);
         if (commit) {
             member.commitTransaction(tid);
         } else {
@@ -89,12 +99,14 @@ class ACMemberTransaction implements Runnable {
             }
         } catch (TimeoutException e) {
             // abort transaction.
+            writeStatusRecord(false);
             member.abortTransaction(tid);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
         if (!commit)  {
+            writeStatusRecord(false);
             member.abortTransaction(tid);
             return;
         }
