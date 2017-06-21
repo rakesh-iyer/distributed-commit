@@ -1,7 +1,7 @@
 import java.util.*;
 import java.util.concurrent.*;
 
-class ACCoordinatorTransaction implements Runnable {
+class ACCoordinatorTransaction extends StateMachine implements Runnable {
     ACCoordinator coordinator;
     BlockingQueue<Message> messageQueue;
     String tid;

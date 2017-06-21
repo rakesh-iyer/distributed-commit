@@ -1,7 +1,7 @@
 import java.util.*;
 import java.util.concurrent.*;
 
-class ACMemberTransaction implements Runnable {
+class ACMemberTransaction extends StateMachine implements Runnable {
     ACMember member;
     BlockingQueue<Message> messageQueue;
     String tid;
@@ -22,100 +22,25 @@ class ACMemberTransaction implements Runnable {
         return messageQueue;
     }
 
-    boolean process_t_start(ACTStartMessage acsm) {
-        // Just get a pseudo-random commit/abort status.
-        boolean commit = getRandomCommitStatus();
+    void sendResponse(Message original, Message response) {
+        response.setSenderPort(member.getPort());
 
-        status.setCommited(commit);
-        status.setStarted(true);
-
-        if (status.isVoting()) {
-            sendVoteResponse(tid);
-        }
-
-        if (commit) {
-            member.getLogImpl().writeRecord(new LogRecord(tid));
-        }
-
-        return commit;
+        member.sendToHost(response, original.getSenderPort());
     }
 
-    void process_t_vote(ACTVoteMessage acvm) {
-        int coordinatorPort = acvm.getSenderPort();
+    void sendBroadcast(Message m) {
+        m.setSenderPort(member.getPort());
 
-        status.setVoting(true);
-
-        if (status.isStarted()) {
-            sendVoteResponse(tid);
-        }
+        member.sendToPeers(m);
     }
 
-    void sendVoteResponse(String tid) {
-        ACTVoteResponseMessage acvrm = new ACTVoteResponseMessage();
+    void writeLogRecord(LogRecord record) {
+        record.setTransactionId(tid);
 
-        acvrm.setCommited(status.isCommited());
-        acvrm.setTransactionId(tid);
-        acvrm.setSenderPort(member.getPort());
-
-        member.sendToCoordinator(acvrm);
-    }
-
-    // pseudo probability of 0.1 returning false.
-    boolean getRandomCommitStatus() {
-        return r.nextInt(11) < 10;
-    }
-
-    void writeStatusRecord(boolean commit) {
-        StatusRecord record = new StatusRecord(tid);
-
-        record.setCommited(commit);
         member.getLogImpl().writeRecord(record);
     }
 
-    boolean process_t_decision(ACTDecisionMessage actdm) {
-        boolean commit = actdm.isCommited();
-        writeStatusRecord(commit);
-        if (commit) {
-            member.commitTransaction(tid);
-        } else {
-            member.abortTransaction(tid);
-        }
-
-        return commit;
-    }
-
-    void process() {
-        boolean commit = false;
-        try {
-            Message m;
-
-            m = TimedMessage.get_message_type(messageQueue, "AC_T_START", messageDelay);
-            commit = process_t_start((ACTStartMessage)m);
-
-            m = TimedMessage.get_message_type(messageQueue, "AC_T_VOTE", messageDelay);
-            process_t_vote((ACTVoteMessage)m);
-
-            if (commit) {
-                m = TimedMessage.get_message_type(messageQueue, "AC_T_DECISION", messageDelay);
-                commit = process_t_decision((ACTDecisionMessage)m);
-            }
-        } catch (TimeoutException e) {
-            // abort transaction.
-            writeStatusRecord(false);
-            member.abortTransaction(tid);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        if (!commit)  {
-            writeStatusRecord(false);
-            member.abortTransaction(tid);
-            return;
-        }
-    }
-
     public void run() {
-        process();
+        execute();
     }
 }
-

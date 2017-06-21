@@ -58,6 +58,10 @@ class ACMember implements Runnable {
         }
     }
 
+    void sendToHost(Message m, int port) {
+        MessageSender.send(m, port);
+    }
+
     void sendToCoordinator(Message m) {
         MessageSender.send(m, coordinatorPort);
     }
