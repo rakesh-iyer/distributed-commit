@@ -22,6 +22,24 @@ class ACCoordinatorTransaction extends StateMachine implements Runnable {
         return messageQueue;
     }
 
+    void sendMessage(Message m, int port) {
+        m.setSenderPort(coordinator.getPort());
+
+        coordinator.sendToHost(m, port);
+    }
+
+    void sendBroadcast(Message m) {
+        m.setSenderPort(coordinator.getPort());
+
+        coordinator.sendToMembers(m);
+    }
+
+    void writeLogRecord(LogRecord record) {
+        record.setTransactionId(tid);
+
+        coordinator.getLogImpl().writeRecord(record);
+    }
+
     void process_t_start(ACTStartMessage acsm) throws InterruptedException {
         // start phase 1.
         ACTVoteMessage atvm = new ACTVoteMessage();

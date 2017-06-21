@@ -22,10 +22,10 @@ class ACMemberTransaction extends StateMachine implements Runnable {
         return messageQueue;
     }
 
-    void sendResponse(Message original, Message response) {
-        response.setSenderPort(member.getPort());
+    void sendMessage(Message m, int port) {
+        m.setSenderPort(member.getPort());
 
-        member.sendToHost(response, original.getSenderPort());
+        member.sendToHost(m, port);
     }
 
     void sendBroadcast(Message m) {
@@ -41,6 +41,10 @@ class ACMemberTransaction extends StateMachine implements Runnable {
     }
 
     public void run() {
-        execute();
+        try {
+            execute();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }

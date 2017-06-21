@@ -1,6 +1,6 @@
 import java.util.concurrent.*;
 
-class StateMachine {
+abstract class StateMachine {
     State currentState;
     BlockingQueue<Message> messageQueue;
     long messageDelay;
@@ -20,7 +20,7 @@ class StateMachine {
         return messageDelay;
     }
 
-    abstract void sendResponse(Message m);
+    abstract void sendMessage(Message m, int port);
     abstract void sendBroadcast(Message m);
     abstract void writeLogRecord(LogRecord r);
 
@@ -49,7 +49,7 @@ class StateMachine {
             Message response = sm.getMessage();
             if (m != null) {
                 if (sm.getMessageType() == StateMessageTuple.MessageType.RESPONSE) {
-                    sendResponse(m, response);
+                    sendMessage(response, m.getSenderPort());
                 } else {
                     sendBroadcast(response);
                 }

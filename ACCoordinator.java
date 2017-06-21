@@ -4,6 +4,7 @@ import java.util.concurrent.*;
 class ACCoordinator implements Runnable {
     Map<String, ACCoordinatorTransaction> transactionMap = new HashMap<>();
     Map <String, Map <Integer, Boolean>> transactionVoteMap = new HashMap<>();
+    FileLogImpl logImpl;
 
     List<String> commitedTransactions = new ArrayList<>();
     List<String> abortedTransactions = new ArrayList<>();
@@ -19,9 +20,14 @@ class ACCoordinator implements Runnable {
         this.port = port;
         this.memberPorts = memberPorts;
         this.doRecovery = doRecovery;
+        logImpl = new FileLogImpl("DistributedTransactionLogCoordinator");
 
         messageReceiver = new MessageReceiver(messageQueue, port);
         new Thread(messageReceiver).start();
+    }
+
+    LogImpl getLogImpl() {
+        return logImpl;
     }
 
     int getPort() {
@@ -30,6 +36,10 @@ class ACCoordinator implements Runnable {
 
     int[] getMemberPorts() {
         return memberPorts;
+    }
+
+    void sendToHost(Message m, int port) {
+        MessageSender.send(m, port);
     }
 
     void sendToMembers(Message m) {

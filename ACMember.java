@@ -5,7 +5,7 @@ class ACMember implements Runnable {
     Map<String, ACMemberTransaction> transactionMap = new HashMap<>();
     List<String> commitedTransactions = new ArrayList<>();
     List<String> abortedTransactions = new ArrayList<>();
-    FileLogImpl logImpl = new FileLogImpl("DistributedTransactionLog");
+    FileLogImpl logImpl;
     boolean stopThread;
     Random r = new Random();
 
@@ -21,6 +21,7 @@ class ACMember implements Runnable {
         this.coordinatorPort = coordinatorPort;
         this.peerPorts = peerPorts;
         this.doRecovery = doRecovery;
+        logImpl = new FileLogImpl("DistributedTransactionLogMember-" + port);
 
         messageReceiver = new MessageReceiver(messageQueue, port);
         new Thread(messageReceiver).start();
