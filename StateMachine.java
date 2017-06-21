@@ -3,7 +3,6 @@ import java.util.concurrent.*;
 abstract class StateMachine {
     State currentState;
     BlockingQueue<Message> messageQueue;
-    long messageDelay;
 
     void setMessageQueue(BlockingQueue<Message> messageQueue) {
         this.messageQueue = messageQueue;
@@ -11,13 +10,6 @@ abstract class StateMachine {
 
     BlockingQueue<Message> getMessageQueue() {
         return messageQueue;
-    }
-    void setMessageDelay(long messageDelay) {
-        this.messageDelay = messageDelay;
-    }
-
-    long getMessageDelay() {
-        return messageDelay;
     }
 
     abstract void sendMessage(Message m, int port);
@@ -30,7 +22,7 @@ abstract class StateMachine {
             try {
                 // some of the states are simple transitions, with no expected messages.
                 if (currentState.getExpectedMessageType() != null) {
-                    m = TimedMessage.get_message_type(messageQueue, currentState.getExpectedMessageType(), messageDelay);
+                    m = TimedMessage.get_message_type(messageQueue, currentState.getExpectedMessageType(), currentState.messageDelay);
                 }
             } catch (TimeoutException e) {
                 currentState = currentState.getTimeoutState();
