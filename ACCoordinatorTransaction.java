@@ -16,6 +16,8 @@ class ACCoordinatorTransaction extends StateMachine implements Runnable {
 
         messageQueue = new LinkedBlockingQueue<>();
         status = new ACTransactionStatus();
+
+        setCurrentState(new TwoPCCoordinatorStartState(coordinator.getMemberPorts()));
     }
 
     BlockingQueue<Message> getMessageQueue() {

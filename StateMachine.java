@@ -4,6 +4,14 @@ abstract class StateMachine {
     State currentState;
     BlockingQueue<Message> messageQueue;
 
+    void setCurrentState(State currentState) {
+        this.currentState = currentState;
+    }
+
+    State getCurrentState() {
+        return currentState;
+    }
+
     void setMessageQueue(BlockingQueue<Message> messageQueue) {
         this.messageQueue = messageQueue;
     }

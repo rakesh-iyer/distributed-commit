@@ -16,6 +16,8 @@ class ACMemberTransaction extends StateMachine implements Runnable {
 
         messageQueue = new LinkedBlockingQueue<>();
         status = new ACTransactionStatus();
+
+        setCurrentState(new TwoPCMemberStartState());
     }
 
     BlockingQueue<Message> getMessageQueue() {

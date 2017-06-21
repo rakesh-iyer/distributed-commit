@@ -107,10 +107,13 @@ class TwoPCUndeterminedState extends TwoPCState {
 }
 
 class TwoPCCoordinatorStartState extends TwoPCState {
-    TwoPCCoordinatorStartState() {
+    int [] memberPorts;
+
+    TwoPCCoordinatorStartState(int [] memberPorts) {
         setTimeoutState(twoPCAbortState);
         setFailureState(twoPCAbortState);
         setExpectedMessageType("AC_T_START");
+        this.memberPorts = memberPorts;
     }
 
     Message setupVoteRequest(String tid) {
@@ -123,26 +126,29 @@ class TwoPCCoordinatorStartState extends TwoPCState {
     StateMessageTuple process(Message m) {
         ACTStartMessage acsm = (ACTStartMessage)m;
 
-        return new StateMessageTuple(new TwoPCCoordinatorWaitForVoteResponseState(), setupVoteRequest(acsm.getTransactionId()), StateMessageTuple.MessageType.BROADCAST, null);
+        return new StateMessageTuple(new TwoPCCoordinatorWaitForVoteResponseState(memberPorts), setupVoteRequest(acsm.getTransactionId()), StateMessageTuple.MessageType.BROADCAST, null);
     }
 }
 
 class TwoPCCoordinatorWaitForVoteResponseState extends TwoPCState {
-    TwoPCCoordinatorWaitForVoteResponseState() {
+    int [] memberPorts;
+
+    TwoPCCoordinatorWaitForVoteResponseState(int [] memberPorts) {
         setTimeoutState(twoPCAbortState);
         setFailureState(twoPCAbortState);
         setExpectedMessageType("AC_T_VOTE_RESPONSE");
+        this.memberPorts = memberPorts;
     }
 
     Map<Integer, Boolean> voteMap = new HashMap<>();
 
     boolean allVotesReceived() {
-/*        for (int port : coordinator.getMemberPorts()) {
+        for (int port : memberPorts) {
             if (!voteMap.containsKey(port)) {
                 return false;
             }
         }
-*/
+
         return true;
     }
 
