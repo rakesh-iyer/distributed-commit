@@ -5,12 +5,20 @@ abstract class TwoPCState extends State {
     static final TwoPCCommitState twoPCCommitState = new TwoPCCommitState();
     static final TwoPCUndeterminedState twoPCUndeterminedState = new TwoPCUndeterminedState();
 
+    TwoPCState() {
+        setMessageDelay(getMaxMessageDelay());
+    }
+
     LogRecord writeStatusRecord(boolean commit) {
         StatusRecord record = new StatusRecord(null);
 
         record.setCommited(commit);
 
         return record;
+    }
+
+    long getMaxMessageDelay() {
+        return 100; //100 ms.
     }
 }
 
@@ -132,6 +140,7 @@ class TwoPCCoordinatorStartState extends TwoPCState {
 
 class TwoPCCoordinatorWaitForVoteResponseState extends TwoPCState {
     int [] memberPorts;
+    long startMillis = System.currentTimeMillis();
 
     TwoPCCoordinatorWaitForVoteResponseState(int [] memberPorts) {
         setTimeoutState(twoPCAbortState);
@@ -180,6 +189,9 @@ class TwoPCCoordinatorWaitForVoteResponseState extends TwoPCState {
         voteMap.put(senderPort, commit);
 
         if (!allVotesReceived()) {
+            // update with remaining message delay.
+            setMessageDelay(getMaxMessageDelay() - (System.currentTimeMillis() - startMillis));
+
             return new StateMessageTuple(this, null, null, null);
         } else {
             // start phase 2.
