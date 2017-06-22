@@ -47,7 +47,7 @@ abstract class StateMachine {
 
             // send a response or broadcast if present.
             Message response = sm.getMessage();
-            if (m != null) {
+            if (response != null) {
                 if (sm.getMessageType() == StateMessageTuple.MessageType.RESPONSE) {
                     sendMessage(response, m.getSenderPort());
                 } else {
