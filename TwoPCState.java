@@ -83,10 +83,11 @@ class TwoPCMemberWaitForDecisionState extends TwoPCState {
     TwoPCMemberWaitForDecisionState() {
         if (isThreePhaseCommit()) {
             setTimeoutState(twoPCAbortState);
+            setFailureState(twoPCAbortState);
         } else {
             setTimeoutState(twoPCUndeterminedState);
+            setFailureState(twoPCUndeterminedState);
         }
-        setFailureState(twoPCAbortState);
         setExpectedMessageType("AC_T_DECISION");
     }
 
@@ -130,6 +131,8 @@ class TwoPCCommitState extends TwoPCState {
 } 
 
 class TwoPCUndeterminedState extends TwoPCState {
+    // Need to run a termination protocol to find what happened to this transaction.
+    // This will require communicating with other parties that know what happened with the transaction and is inherently blocking.
     StateMessageTuple process(Message m) {
         return null;
     }
