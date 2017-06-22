@@ -20,6 +20,10 @@ abstract class TwoPCState extends State {
     long getMaxMessageDelay() {
         return 100; //100 ms.
     }
+
+    boolean isThreePhaseCommit() {
+        return true;
+    }
 }
 
 class TwoPCMemberStartState extends TwoPCState {
@@ -82,12 +86,25 @@ class TwoPCMemberWaitForDecisionState extends TwoPCState {
         setExpectedMessageType("AC_T_DECISION");
     }
 
+    Message setupDecisionAck(String tid) {
+        ACTDecisionAckMessage acdam = new ACTDecisionAckMessage();
+
+        acdam.setTransactionId(tid);
+
+        return acdam;
+    }
+
     StateMessageTuple process(Message m) {
         ACTDecisionMessage actdm = (ACTDecisionMessage)m;
         boolean commit = actdm.isCommited();
 
         if (commit) {
-            return new StateMessageTuple(twoPCCommitState, null, null, writeStatusRecord(true));
+            Message decisionAckMessage = null;
+            if (isThreePhaseCommit()) {
+                return new StateMessageTuple(twoPCCommitState, setupDecisionAck(actdm.getTransactionId()), StateMessageTuple.MessageType.RESPONSE, writeStatusRecord(true));
+            } else {
+                return new StateMessageTuple(twoPCCommitState, null, null, writeStatusRecord(true));
+            }
         } else {
             return new StateMessageTuple(twoPCAbortState, null, null, writeStatusRecord(false));
         }
@@ -200,10 +217,54 @@ class TwoPCCoordinatorWaitForVoteResponseState extends TwoPCState {
             m = setupCommitDecision(tid, commit);
 
             if (commit) {
-                return new StateMessageTuple(twoPCCommitState, m, StateMessageTuple.MessageType.BROADCAST, null);
+                if (isThreePhaseCommit()) {
+                    return new StateMessageTuple(new ThreePCCoordinatorWaitForDecisionAckState(memberPorts), m, StateMessageTuple.MessageType.BROADCAST, null);
+                } else {
+                    return new StateMessageTuple(twoPCCommitState, m, StateMessageTuple.MessageType.BROADCAST, null);
+                }
             } else {
                 return new StateMessageTuple(twoPCAbortState, m, StateMessageTuple.MessageType.BROADCAST, null);
             }
+        }
+    }
+}
+
+class ThreePCCoordinatorWaitForDecisionAckState extends TwoPCState {
+    int [] memberPorts;
+    long startMillis = System.currentTimeMillis();
+
+    ThreePCCoordinatorWaitForDecisionAckState(int [] memberPorts) {
+        setTimeoutState(twoPCCommitState);
+        setFailureState(twoPCCommitState);
+        setExpectedMessageType("AC_T_DECISION_ACK");
+        this.memberPorts = memberPorts;
+    }
+
+    Map<Integer, Boolean> ackMap = new HashMap<>();
+
+    boolean allAcksReceived() {
+        for (int port : memberPorts) {
+            if (!ackMap.containsKey(port)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    StateMessageTuple process(Message m) {
+        ACTDecisionAckMessage actvm = (ACTDecisionAckMessage)m;
+        Integer senderPort = actvm.getSenderPort();
+
+        ackMap.put(senderPort, true);
+
+        if (!allAcksReceived()) {
+            // update with remaining message delay.
+            setMessageDelay(getMaxMessageDelay() - (System.currentTimeMillis() - startMillis));
+
+            return new StateMessageTuple(this, null, null, null);
+        } else {
+            return new StateMessageTuple(twoPCCommitState, null, null, null);
         }
     }
 }
