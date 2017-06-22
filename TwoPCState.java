@@ -81,7 +81,11 @@ class TwoPCMemberWaitForVoteState extends TwoPCState {
 
 class TwoPCMemberWaitForDecisionState extends TwoPCState {
     TwoPCMemberWaitForDecisionState() {
-        setTimeoutState(twoPCUndeterminedState);
+        if (isThreePhaseCommit()) {
+            setTimeoutState(twoPCAbortState);
+        } else {
+            setTimeoutState(twoPCUndeterminedState);
+        }
         setFailureState(twoPCAbortState);
         setExpectedMessageType("AC_T_DECISION");
     }
@@ -234,7 +238,7 @@ class ThreePCCoordinatorWaitForDecisionAckState extends TwoPCState {
     long startMillis = System.currentTimeMillis();
 
     ThreePCCoordinatorWaitForDecisionAckState(int [] memberPorts) {
-        setTimeoutState(twoPCCommitState);
+        setTimeoutState(twoPCAbortState);
         setFailureState(twoPCCommitState);
         setExpectedMessageType("AC_T_DECISION_ACK");
         this.memberPorts = memberPorts;
