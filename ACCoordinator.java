@@ -39,10 +39,12 @@ class ACCoordinator implements Runnable {
     }
 
     void sendToHost(Message m, int port) {
+        m.setSenderPort(this.port);
         MessageSender.send(m, port);
     }
 
     void sendToMembers(Message m) {
+        m.setSenderPort(port);
         for (int port : memberPorts) {
             System.out.println(port);
             MessageSender.send(m, port);

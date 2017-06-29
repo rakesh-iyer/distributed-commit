@@ -48,7 +48,6 @@ class ACMember implements Runnable {
 
         ACTStartMessage actsm = new ACTStartMessage();
         actsm.setTransactionId(tid);
-        actsm.setSenderPort(port);
 
         try {
             messageQueue.put(actsm);
@@ -60,14 +59,17 @@ class ACMember implements Runnable {
     }
 
     void sendToHost(Message m, int port) {
+        m.setSenderPort(this.port);
         MessageSender.send(m, port);
     }
 
     void sendToCoordinator(Message m) {
+        m.setSenderPort(port);
         MessageSender.send(m, coordinatorPort);
     }
 
     void sendToPeers(Message m) {
+        m.setSenderPort(port);
         for (int peerPort : peerPorts) {
             MessageSender.send(m, peerPort);
         }

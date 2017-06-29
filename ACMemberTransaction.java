@@ -26,14 +26,10 @@ class ACMemberTransaction extends StateMachine implements Runnable {
     }
 
     void sendMessage(Message m, int port) {
-        m.setSenderPort(member.getPort());
-
         member.sendToHost(m, port);
     }
 
     void sendBroadcast(Message m) {
-        m.setSenderPort(member.getPort());
-
         member.sendToPeers(m);
     }
 

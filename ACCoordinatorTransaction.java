@@ -26,14 +26,10 @@ class ACCoordinatorTransaction extends StateMachine implements Runnable {
     }
 
     void sendMessage(Message m, int port) {
-        m.setSenderPort(coordinator.getPort());
-
         coordinator.sendToHost(m, port);
     }
 
     void sendBroadcast(Message m) {
-        m.setSenderPort(coordinator.getPort());
-
         coordinator.sendToMembers(m);
     }
 
